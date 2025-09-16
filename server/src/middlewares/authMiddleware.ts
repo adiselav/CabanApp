@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/auth";
 
-// același tip local ca în roleMiddleware
 type Rol = "ADMIN" | "PROPRIETAR" | "TURIST";
 
 interface DecodedToken {

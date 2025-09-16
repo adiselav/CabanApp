@@ -21,7 +21,6 @@ router.get("/:id", requireAuth, allowRoles("PROPRIETAR", "ADMIN", "TURIST"), get
 router.put("/:id", requireAuth, allowRoles("PROPRIETAR", "ADMIN", "TURIST"), updateCamera); // UPDATE
 router.delete("/:id", requireAuth, allowRoles("PROPRIETAR", "ADMIN", "TURIST"), deleteCamera); // DELETE
 
-// Extra endpoints
 router.get(
   "/cabana/:idCabana",
   requireAuth,

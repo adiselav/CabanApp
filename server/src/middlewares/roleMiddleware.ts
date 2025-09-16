@@ -1,13 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 
-// Tip local stabil (aliniat cu enumul din schema.prisma)
 type Rol = "ADMIN" | "PROPRIETAR" | "TURIST";
 
 interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
     email: string;
-    rol: Rol; // "ADMIN" | "PROPRIETAR" | "TURIST"
+    rol: Rol;
   };
 }
 

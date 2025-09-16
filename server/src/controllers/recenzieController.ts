@@ -10,7 +10,6 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// recalculează scorul mediu pentru o cabană
 const updateScorRecenzii = async (idCabana: number): Promise<void> => {
   const recenzii = await prisma.recenzie.findMany({
     where: { idCabana },
@@ -147,7 +146,6 @@ export const updateRecenzie = async (
       const updated = await tx.recenzie.update({
         where: { id: idRecenzie },
         data: {
-          // setăm doar câmpurile furnizate
           ...(scor !== undefined ? { scor: Number(scor) } : {}),
           ...(descriere !== undefined ? { descriere } : {}),
           ...(idCabana !== undefined ? { idCabana: Number(idCabana) } : {}),
