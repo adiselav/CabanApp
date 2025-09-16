@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Utilizator {
+  id         Int         @id @default(autoincrement())
+  googleId   String?     @map("google_id") @db.VarChar(255)
+  email      String      @unique @db.VarChar(255)
+  parolaHash String?     @map("parola_hash") @db.VarChar(255)
+  rol        Rol         @default(TURIST)
+  nume       String      @db.VarChar(255)
+  prenume    String      @db.VarChar(255)
+  telefon    String      @unique @db.VarChar(15)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  rezervari  Rezervare[]
+  cabane     Cabana[]
+  recenzii   Recenzie[]
+
+  @@map("utilizatori")
+}
+
+model Cabana {
+  id             Int        @id @default(autoincrement())
+  denumire       String     @db.VarChar(255)
+  locatie        String     @db.VarChar(255)
+  altitudine     Int
+  contactEmail   String     @unique @map("contact_email") @db.VarChar(255)
+  contactTelefon String     @unique @map("contact_telefon") @db.VarChar(15)
+  descriere      String?    @db.Text
+  scorRecenzii   Decimal    @default(0) @map("scor_recenzii") @db.Decimal(10, 2)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  idUtilizator   Int        @map("id_utilizator")
+  utilizator     Utilizator @relation(fields: [idUtilizator], references: [id], onDelete: Cascade)
+  camere         Camera[]
+  media          Media[]
+  recenzii       Recenzie[]
+
+  @@index([idUtilizator])
+  @@map("cabane")
+}
+
+model Camera {
+  id         Int         @id @default(autoincrement())
+  nrCamera   Int         @map("nr_camera")
+  nrPersoane Int         @map("nr_persoane")
+  pretNoapte Decimal     @map("pret_noapte") @db.Decimal(10, 2)
+  descriere  String?     @db.Text
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  idCabana   Int         @map("id_cabana")
+  cabana     Cabana      @relation(fields: [idCabana], references: [id], onDelete: Cascade)
+  rezervari  Rezervare[]
+
+  @@unique([idCabana, nrCamera])
+  @@index([idCabana])
+  @@map("camere")
+}
+
+model Rezervare {
+  id             Int            @id @default(autoincrement())
+  dataSosire     DateTime       @map("data_sosire")
+  dataPlecare    DateTime       @map("data_plecare")
+  nrPersoane     Int            @map("nr_persoane")
+  pretTotal      Decimal        @map("pret_total") @db.Decimal(10, 2)
+  stareRezervare StareRezervare @default(CONFIRMAT) @map("stare_rezervare")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  idUtilizator Int        @map("id_utilizator")
+  utilizator   Utilizator @relation(fields: [idUtilizator], references: [id], onDelete: Cascade)
+  camere       Camera[]
+
+  @@index([idUtilizator])
+  @@map("rezervari")
+}
+
+model Media {
+  id        Int       @id @default(autoincrement())
+  url       String    @unique @db.Text
+  tip       TipFisier @default(IMAGINE)
+  descriere String?   @db.VarChar(255)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  idCabana  Int?      @map("id_cabana")
+  cabana    Cabana?   @relation(fields: [idCabana], references: [id], onDelete: Cascade)
+
+  @@index([idCabana])
+  @@map("media")
+}
+
+model Recenzie {
+  id           Int        @id @default(autoincrement())
+  scor         Int
+  descriere    String?    @db.Text
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  idCabana     Int        @map("id_cabana")
+  cabana       Cabana     @relation(fields: [idCabana], references: [id], onDelete: Cascade)
+  idUtilizator Int        @map("id_utilizator")
+  Utilizator   Utilizator @relation(fields: [idUtilizator], references: [id], onDelete: Cascade)
+
+  @@index([idCabana])
+  @@map("recenzii")
+}
+
+enum Rol {
+  TURIST
+  PROPRIETAR
+  ADMIN
+}
+
+enum StareRezervare {
+  CONFIRMAT
+  ANULAT
+  NEACHITAT
+  ACHITAT
+  RAMBURSAT
+}
+
+enum TipFisier {
+  IMAGINE
+  VIDEO
+}
