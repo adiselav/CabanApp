@@ -43,6 +43,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.13.10",
     "nodemon": "^3.1.9",
+    "prisma-erd-generator": "^2.1.0",
     "ts-node": "^10.9.2",
     "tsuml2": "^0.17.1",
     "typedoc": "^0.28.5",
