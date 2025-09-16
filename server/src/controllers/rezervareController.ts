@@ -11,13 +11,27 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+type RezervareBody = {
+  dataSosire: string;
+  dataPlecare: string;
+  nrPersoane: number;
+  idCamere: number[];
+};
+
 export const insertRezervare = async (
   req: AuthenticatedRequest,
   res: Response
 ): Promise<any> => {
   try {
-    const { dataSosire, dataPlecare, nrPersoane, idCamere = [] } = req.body;
+    const {
+      dataSosire,
+      dataPlecare,
+      nrPersoane,
+      idCamere = [],
+    } = req.body as Partial<RezervareBody>;
+
     const userId = req.user?.id;
+
     if (
       !userId ||
       !dataSosire ||
@@ -27,72 +41,77 @@ export const insertRezervare = async (
     ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+
     const camere = await prisma.camera.findMany({
       where: { id: { in: idCamere } },
+      select: { id: true, idCabana: true, pretNoapte: true },
     });
+
     if (camere.length !== idCamere.length) {
       return res.status(404).json({ error: "One or more camere not found" });
     }
-    const idCabaneUnice = new Set(camere.map((camera) => camera.idCabana));
+
+    const idCabaneUnice = new Set<number>(
+      camere.map((camera: { idCabana: number }) => camera.idCabana)
+    );
     if (idCabaneUnice.size > 1) {
       return res
         .status(400)
         .json({ error: "All rooms must be from the same cabana" });
     }
-    const zile = differenceInCalendarDays(
-      new Date(dataPlecare),
-      new Date(dataSosire)
-    );
-    if (zile <= 0) {
+
+    const start = new Date(dataSosire);
+    const end = new Date(dataPlecare);
+    const zile = differenceInCalendarDays(end, start);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || zile <= 0) {
       return res.status(400).json({ error: "Invalid stay interval" });
     }
+
     const rezervariConflict = await prisma.rezervare.findMany({
       where: {
-        camere: {
-          some: {
-            id: { in: idCamere },
-          },
-        },
-        AND: [
-          { dataSosire: { lt: new Date(dataPlecare) } },
-          { dataPlecare: { gt: new Date(dataSosire) } },
-        ],
+        camere: { some: { id: { in: idCamere } } },
+        AND: [{ dataSosire: { lt: end } }, { dataPlecare: { gt: start } }],
       },
       include: {
-        camere: {
-          include: { cabana: true },
-        },
+        camere: { select: { id: true } },
       },
     });
+
     if (rezervariConflict.length > 0) {
       return res.status(409).json({
         error:
           "Conflict: una sau mai multe camere sunt deja rezervate în acest interval",
-        conflicte: rezervariConflict.map((r) => ({
-          idRezervare: r.id,
-          dataSosire: r.dataSosire,
-          dataPlecare: r.dataPlecare,
-          camere: r.camere.map((c) => c.id),
-        })),
+        conflicte: rezervariConflict.map(
+          (r: { id: number; dataSosire: Date; dataPlecare: Date; camere: { id: number }[] }) => ({
+            idRezervare: r.id,
+            dataSosire: r.dataSosire,
+            dataPlecare: r.dataPlecare,
+            camere: r.camere.map((c: { id: number }) => c.id),
+          })
+        ),
       });
     }
+
     let pretTotal = new Decimal(0);
-    camere.forEach((camera) => {
+    camere.forEach((camera: { pretNoapte: Decimal | number }) => {
       const pret =
         camera.pretNoapte instanceof Decimal
           ? camera.pretNoapte
           : new Decimal(camera.pretNoapte);
       pretTotal = pretTotal.plus(pret.mul(zile));
     });
+
     const rezervare = await prisma.rezervare.create({
       data: {
-        dataSosire: new Date(dataSosire),
-        dataPlecare: new Date(dataPlecare),
+        dataSosire: start,
+        dataPlecare: end,
         nrPersoane,
         pretTotal,
         idUtilizator: userId,
       },
     });
+
     await prisma.rezervare.update({
       where: { id: rezervare.id },
       data: {
@@ -101,14 +120,17 @@ export const insertRezervare = async (
         },
       },
     });
+
     const rezervareCompleta = await prisma.rezervare.findUnique({
       where: { id: rezervare.id },
       include: {
-        camere: {
-          include: { cabana: true },
+        camere: { include: { cabana: true } },
+        utilizator: {
+          select: { id: true, nume: true, prenume: true, email: true },
         },
       },
     });
+
     return res.status(201).json({
       message: "Rezervare creată cu succes",
       rezervare: rezervareCompleta,
@@ -126,22 +148,17 @@ export const getAllRezervari = async (
   try {
     const rezervari = await prisma.rezervare.findMany({
       include: {
-        camere: {
-          include: { cabana: true }
-        },
+        camere: { include: { cabana: true } },
         utilizator: {
-          select: {
-            id: true,
-            nume: true,
-            prenume: true,
-            email: true
-          }
-        }
+          select: { id: true, nume: true, prenume: true, email: true },
+        },
       },
     });
+
     if (rezervari.length === 0) {
       return res.status(404).json({ error: "No Rezervari found" });
     }
+
     return res.status(200).json(rezervari);
   } catch (error) {
     return res.status(500).json({ error: "Server error" });
@@ -154,12 +171,16 @@ export const getRezervareById = async (
 ): Promise<any> => {
   try {
     const userId = req.user?.id;
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: "Invalid rezervare ID" });
+    }
+
     const rezervare = await prisma.rezervare.findUnique({
-      where: { id: Number(req.params.id) },
+      where: { id },
       include: {
-        camere: {
-          include: { cabana: true },
-        },
+        camere: { include: { cabana: true } },
       },
     });
 
@@ -183,7 +204,13 @@ export const updateRezervare = async (
 ): Promise<any> => {
   try {
     const rezervareId = Number(req.params.id);
-    const { dataSosire, dataPlecare, nrPersoane, idCamere = [] } = req.body;
+    const {
+      dataSosire,
+      dataPlecare,
+      nrPersoane,
+      idCamere = [],
+    } = req.body as Partial<RezervareBody>;
+
     const userId = req.user?.id;
 
     if (
@@ -208,70 +235,69 @@ export const updateRezervare = async (
 
     const camere = await prisma.camera.findMany({
       where: { id: { in: idCamere } },
+      select: { id: true, idCabana: true, pretNoapte: true },
     });
 
     if (camere.length !== idCamere.length) {
       return res.status(404).json({ error: "One or more camere not found" });
     }
 
-    const idCabaneUnice = new Set(camere.map((camera) => camera.idCabana));
+    const idCabaneUnice = new Set<number>(
+      camere.map((camera: { idCabana: number }) => camera.idCabana)
+    );
     if (idCabaneUnice.size > 1) {
       return res
         .status(400)
         .json({ error: "All rooms must be from the same cabana" });
     }
 
-    const zile = differenceInCalendarDays(
-      new Date(dataPlecare),
-      new Date(dataSosire)
-    );
-    if (zile <= 0) {
+    const start = new Date(dataSosire);
+    const end = new Date(dataPlecare);
+    const zile = differenceInCalendarDays(end, start);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || zile <= 0) {
       return res.status(400).json({ error: "Invalid stay interval" });
     }
 
     const rezervariConflict = await prisma.rezervare.findMany({
       where: {
         id: { not: rezervareId },
-        camere: {
-          some: {
-            id: { in: idCamere },
-          },
-        },
-        AND: [
-          { dataSosire: { lt: new Date(dataPlecare) } },
-          { dataPlecare: { gt: new Date(dataSosire) } },
-        ],
+        camere: { some: { id: { in: idCamere } } },
+        AND: [{ dataSosire: { lt: end } }, { dataPlecare: { gt: start } }],
       },
       include: {
-        camere: {
-          include: { cabana: true },
-        },
+        camere: { select: { id: true } },
       },
     });
 
     if (rezervariConflict.length > 0) {
       return res.status(409).json({
-        error:
-          "Conflict: camerele selectate sunt deja rezervate în acest interval",
-        conflicte: rezervariConflict.map((r) => ({
-          idRezervare: r.id,
-          dataSosire: r.dataSosire,
-          dataPlecare: r.dataPlecare,
-          camere: r.camere.map((c) => c.id),
-        })),
+        error: "Conflict: camerele selectate sunt deja rezervate în acest interval",
+        conflicte: rezervariConflict.map(
+          (r: { id: number; dataSosire: Date; dataPlecare: Date; camere: { id: number }[] }) => ({
+            idRezervare: r.id,
+            dataSosire: r.dataSosire,
+            dataPlecare: r.dataPlecare,
+            camere: r.camere.map((c: { id: number }) => c.id),
+          })
+        ),
       });
     }
 
     let pretTotal = new Decimal(0);
-    camere.forEach((camera) => {
-      pretTotal = pretTotal.plus(camera.pretNoapte.mul(zile));
+    camere.forEach((camera: { pretNoapte: Decimal | number }) => {
+      const pret =
+        camera.pretNoapte instanceof Decimal
+          ? camera.pretNoapte
+          : new Decimal(camera.pretNoapte);
+      pretTotal = pretTotal.plus(pret.mul(zile));
     });
 
     const updatedRezervare = await prisma.rezervare.update({
       where: { id: rezervareId },
       data: {
-        dataSosire: new Date(dataSosire),
-        dataPlecare: new Date(dataPlecare),
+        dataSosire: start,
+        dataPlecare: end,
         nrPersoane,
         pretTotal,
         idUtilizator: userId,
@@ -280,9 +306,7 @@ export const updateRezervare = async (
         },
       },
       include: {
-        camere: {
-          include: { cabana: true },
-        },
+        camere: { include: { cabana: true } },
       },
     });
 
@@ -300,6 +324,10 @@ export const deleteRezervare = async (
   try {
     const rezervareId = Number(req.params.id);
     const userId = req.user?.id;
+
+    if (Number.isNaN(rezervareId)) {
+      return res.status(400).json({ error: "Invalid rezervare ID" });
+    }
 
     const rezervare = await prisma.rezervare.findUnique({
       where: { id: rezervareId },
@@ -337,17 +365,17 @@ export const getRezervareByUtilizatorId = async (
     const rezervari = await prisma.rezervare.findMany({
       where: { idUtilizator: userId },
       include: {
-        camere: {
-          include: { cabana: true },
-        },
+        camere: { include: { cabana: true } },
       },
       orderBy: { dataSosire: "asc" },
     });
 
-    const serializedRezervari = rezervari.map((rez) => ({
-      ...rez,
-      created_at: rez.createdAt.toISOString(),
-    }));
+    const serializedRezervari = rezervari.map(
+      (rez: { createdAt: Date } & Record<string, any>) => ({
+        ...rez,
+        created_at: rez.createdAt.toISOString(),
+      })
+    );
 
     return res.status(200).json(serializedRezervari);
   } catch (error) {

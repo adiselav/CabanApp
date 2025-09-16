@@ -1,11 +1,25 @@
 import { Request, Response } from "express";
 import { prisma } from "../server";
 
+type CameraLite = { id: number; nrPersoane: number };
+type CabanaLite = {
+  id: number;
+  denumire: string;
+  locatie: string;
+  altitudine: number;
+  descriere: string | null;
+  contactEmail: string;
+  contactTelefon: string;
+  scorRecenzii: any;
+  camere: CameraLite[];
+  _count: { recenzii: number };
+};
+
 interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
     email: string;
-    rol: string;
+    rol: "ADMIN" | "PROPRIETAR" | "TURIST";
   };
 }
 
@@ -215,45 +229,41 @@ export const getCabaneWithAvailability = async (
       return res.status(400).json({ error: "Invalid date range" });
     }
 
-    const rezervariConflict = await prisma.rezervare.findMany({
-      where: {
-        AND: [
-          { dataSosire: { lt: endDate } },
-          { dataPlecare: { gt: startDate } },
-        ],
-      },
-      select: {
-        camere: {
-          select: { id: true },
+    const rezervariConflict: { camere: { id: number }[] }[] =
+      await prisma.rezervare.findMany({
+        where: {
+          AND: [{ dataSosire: { lt: endDate } }, { dataPlecare: { gt: startDate } }],
         },
-      },
-    });
+        select: {
+          camere: { select: { id: true } },
+        },
+      });
 
-    const camereIndisponibile = new Set(
-      rezervariConflict.flatMap((rez) => rez.camere.map((c) => c.id))
+    const camereIndisponibile = new Set<number>(
+      rezervariConflict.flatMap((rez: { camere: { id: number }[] }) =>
+        rez.camere.map((c: { id: number }) => c.id)
+      )
     );
 
-    const cabane = await prisma.cabana.findMany({
+    const cabane = (await prisma.cabana.findMany({
       where:
         typeof locatie === "string" && locatie.trim() !== ""
           ? { locatie: { contains: locatie, mode: "insensitive" } }
           : undefined,
       include: {
         camere: true,
-        _count: {
-          select: { recenzii: true },
-        },
+        _count: { select: { recenzii: true } },
       },
-    });
+    })) as unknown as CabanaLite[];
 
-    const result = cabane.map((cabana) => {
+    const result = cabane.map((cabana: CabanaLite) => {
       let camereDisponibile = cabana.camere.filter(
-        (camera) => !camereIndisponibile.has(camera.id)
+        (camera: CameraLite) => !camereIndisponibile.has(camera.id)
       );
 
       if (nrPersoane && !isNaN(Number(nrPersoane))) {
         camereDisponibile = camereDisponibile.filter(
-          (camera) => camera.nrPersoane >= Number(nrPersoane)
+          (camera: CameraLite) => camera.nrPersoane >= Number(nrPersoane)
         );
       }
 

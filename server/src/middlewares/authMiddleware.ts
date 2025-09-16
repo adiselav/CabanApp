@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/auth";
-import { Rol } from "@prisma/client";
+
+// același tip local ca în roleMiddleware
+type Rol = "ADMIN" | "PROPRIETAR" | "TURIST";
 
 interface DecodedToken {
   id: number;

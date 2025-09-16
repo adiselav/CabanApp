@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom"; // <-- importă useNavigate
+import { useNavigate } from "react-router-dom";
 import { MdAccountCircle, MdLogout, MdEdit } from "react-icons/md";
 import logo from "/1280px-Emblem_of_ONT_Carpați.svg.png";
 import { AuthContext } from "../context/AuthContext";

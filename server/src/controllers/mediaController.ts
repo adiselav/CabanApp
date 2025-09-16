@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { prisma } from "../server";
-import { TipFisier } from "@prisma/client";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -9,6 +8,7 @@ interface AuthenticatedRequest extends Request {
     rol: string;
   };
 }
+
 export const insertMedia = async (req: Request, res: Response): Promise<any> => {
   try {
     const file = req.file;
@@ -18,7 +18,7 @@ export const insertMedia = async (req: Request, res: Response): Promise<any> => 
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const tip: TipFisier = file.mimetype.startsWith("video") ? "VIDEO" : "IMAGINE";
+    const tip = file.mimetype.startsWith("video") ? "VIDEO" : "IMAGINE";
 
     const media = await prisma.media.create({
       data: {
@@ -35,6 +35,7 @@ export const insertMedia = async (req: Request, res: Response): Promise<any> => 
     return res.status(500).json({ error: "Server error" });
   }
 };
+
 export const getAllMedia = async (req: Request, res: Response): Promise<any> => {
   try {
     const media = await prisma.media.findMany({
@@ -56,6 +57,7 @@ export const getAllMedia = async (req: Request, res: Response): Promise<any> => 
     return res.status(500).json({ error: "Server error" });
   }
 };
+
 export const getMediaById = async (req: Request, res: Response): Promise<any> => {
   try {
     const media = await prisma.media.findUnique({
@@ -72,6 +74,7 @@ export const getMediaById = async (req: Request, res: Response): Promise<any> =>
     return res.status(500).json({ error: "Server error" });
   }
 };
+
 export const updateMedia = async (req: Request, res: Response): Promise<any> => {
   try {
     const { url, descriere, idCabana } = req.body;
@@ -91,6 +94,7 @@ export const updateMedia = async (req: Request, res: Response): Promise<any> => 
     return res.status(500).json({ error: "Server error" });
   }
 };
+
 export const deleteMedia = async (req: Request, res: Response): Promise<any> => {
   try {
     await prisma.media.delete({

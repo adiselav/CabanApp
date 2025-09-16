@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, JWT_EXPIRES_IN } from "../config/auth";
 import { isValidEmail, isValidTelefon } from "../config/utils";
-import { Rol } from "@prisma/client";
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -37,7 +36,6 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         email,
         parolaHash,
         googleId: googleId || null,
-        rol: Rol.TURIST,
         nume,
         prenume,
         telefon,
@@ -50,7 +48,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    const { parolaHash: _, ...safeUser } = user;
+    const { parolaHash: _removed, ...safeUser } = user;
 
     return res.status(201).json({
       message: "Utilizator înregistrat și conectat cu succes.",
@@ -92,7 +90,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    const { parolaHash: _, ...safeUser } = user;
+    const { parolaHash: _removed, ...safeUser } = user;
 
     return res.status(200).json({
       message: "Conectare cu succes.",

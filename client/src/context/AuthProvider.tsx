@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [logout]);
 
   const contextValue = useMemo(
-    () => ({ user, token, loading, login, logout, setUser }), // ADĂUGAT setUser
+    () => ({ user, token, loading, login, logout, setUser }),
     [user, token, loading, login, logout]
   );
 

@@ -1,7 +1,7 @@
 import express from "express";
 import { requireAuth } from "../middlewares/authMiddleware";
 import { allowRoles } from "../middlewares/roleMiddleware";
-import { Rol } from "@prisma/client";
+
 import {
   insertCabana,
   getAllCabane,
@@ -14,11 +14,16 @@ import {
 const router = express.Router();
 
 // C.R.U.D create, read, update, and delete
-router.post("/", requireAuth, allowRoles(Rol.PROPRIETAR, Rol.ADMIN), insertCabana); // CREATE
-router.get("/disponibilitate", requireAuth, allowRoles(Rol.PROPRIETAR, Rol.ADMIN, Rol.TURIST), getCabaneWithAvailability); // AVAILABILITY
-router.get("/", requireAuth, allowRoles(Rol.PROPRIETAR, Rol.ADMIN), getAllCabane); // READ all
-router.get("/:id", requireAuth, allowRoles(Rol.PROPRIETAR, Rol.ADMIN, Rol.TURIST), getCabanaById); // READ one
-router.put("/:id", requireAuth, allowRoles(Rol.PROPRIETAR, Rol.ADMIN), updateCabana); // UPDATE
-router.delete("/:id", requireAuth, allowRoles(Rol.PROPRIETAR, Rol.ADMIN), deleteCabana); // DELETE
+router.post("/", requireAuth, allowRoles("PROPRIETAR", "ADMIN"), insertCabana); // CREATE
+router.get(
+  "/disponibilitate",
+  requireAuth,
+  allowRoles("PROPRIETAR", "ADMIN", "TURIST"),
+  getCabaneWithAvailability
+);
+router.get("/", requireAuth, allowRoles("PROPRIETAR", "ADMIN"), getAllCabane); // READ all
+router.get("/:id", requireAuth, allowRoles("PROPRIETAR", "ADMIN", "TURIST"), getCabanaById); // READ one
+router.put("/:id", requireAuth, allowRoles("PROPRIETAR", "ADMIN"), updateCabana); // UPDATE
+router.delete("/:id", requireAuth, allowRoles("PROPRIETAR", "ADMIN"), deleteCabana); // DELETE
 
 export default router;

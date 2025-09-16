@@ -13,7 +13,7 @@ import { AuthContext } from "./context/AuthContext";
 import { Rol } from "./constants/roles";
 import BusinessSignIn from "./pages/BusinessSignIn";
 import Dashboard from "./pages/Dashboard";
-import BusinessProfile from "./pages/BusinessProfile"; // <-- import nou
+import BusinessProfile from "./pages/BusinessProfile";
 
 const App = () => {
   const auth = useContext(AuthContext);
